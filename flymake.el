@@ -95,6 +95,43 @@ file (and thus on the remote machine), or in the same place as
   :group 'flymake
   :type 'boolean)
 
+(defcustom flymake-log-level -1
+  "Logging level, only messages with level lower or equal will be logged.
+-1 = NONE, 0 = ERROR, 1 = WARNING, 2 = INFO, 3 = DEBUG
+
+   See `flymake-log-file-name' if you want to control where the log is created."
+  :group 'flymake
+  :type 'integer)
+
+;; Yes, this is an awful default.
+(defcustom flymake-log-file-name "~/flymake.log"
+  "Where to put the flymake log if logging is enabled.
+
+   See `flymake-log-level' if you want to control what is logged."
+  :group 'flymake
+  :type 'string)
+
+(defun flymake-enquote-log-string (string)
+  "Prepends > on each line of STRING."
+  (concat "\n  > " (flymake-replace-regexp-in-string "\n" "\n  > " string t t)))
+
+(defun flymake-log (level text &rest args)
+  "Log a message at level LEVEL.
+If LEVEL is higher than `flymake-log-level', the message is
+ignored.  Otherwise, it is printed using `message'.
+TEXT is a format control string, and the remaining arguments ARGS
+are the string substitutions (see `format')."
+  (if (<= level flymake-log-level)
+    (let* ((msg (apply 'format text args))
+           ;; Surely there's a better way to do this?
+           (time (current-time))
+           (timestamp (concat (format-time-string "%Y-%m-%d %T" time)
+                              "."
+                              (format "%06d" (third time)))))
+      (message "%s" msg)
+      (make-directory (file-name-directory flymake-log-file-name) 1)
+      (write-region (concat "[" timestamp "] " msg "\n") nil flymake-log-file-name t 566))))
+
 ;;;###autoload
 (define-minor-mode flymake-mode
   "Toggle on-the-fly syntax checking.
@@ -295,43 +332,6 @@ See `x-popup-menu' for the menu specifier format."
 ) ;; End of (unless (fboundp 'posn-at-point)
 
 ;;;; ]]
-
-(defcustom flymake-log-level -1
-  "Logging level, only messages with level lower or equal will be logged.
--1 = NONE, 0 = ERROR, 1 = WARNING, 2 = INFO, 3 = DEBUG
-
-   See `flymake-log-file-name' if you want to control where the log is created."
-  :group 'flymake
-  :type 'integer)
-
-;; Yes, this is an awful default.
-(defcustom flymake-log-file-name "~/flymake.log"
-  "Where to put the flymake log if logging is enabled.
-
-   See `flymake-log-level' if you want to control what is logged."
-  :group 'flymake
-  :type 'string)
-
-(defun flymake-enquote-log-string (string)
-  "Prepends > on each line of STRING."
-  (concat "\n  > " (flymake-replace-regexp-in-string "\n" "\n  > " string t t)))
-
-(defun flymake-log (level text &rest args)
-  "Log a message at level LEVEL.
-If LEVEL is higher than `flymake-log-level', the message is
-ignored.  Otherwise, it is printed using `message'.
-TEXT is a format control string, and the remaining arguments ARGS
-are the string substitutions (see `format')."
-  (if (<= level flymake-log-level)
-    (let* ((msg (apply 'format text args))
-           ;; Surely there's a better way to do this?
-           (time (current-time))
-           (timestamp (concat (format-time-string "%Y-%m-%d %T" time)
-                              "."
-                              (format "%06d" (third time)))))
-      (message "%s" msg)
-      (make-directory (file-name-directory flymake-log-file-name) 1)
-      (write-region (concat "[" timestamp "] " msg "\n") nil flymake-log-file-name t 566))))
 
 (defun flymake-ins-after (list pos val)
   "Insert VAL into LIST after position POS."
